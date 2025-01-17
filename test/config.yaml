@@ -1,0 +1,7 @@
+styles:
+  - ./*.css
+
+scripts:
+  - ./*.js
+
+out: ./dist

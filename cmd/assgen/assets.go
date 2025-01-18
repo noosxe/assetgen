@@ -52,15 +52,7 @@ func GenerateManifest(config string, out string) int {
 		log.Println("output path exists")
 	}
 
-	configDoc, err := os.ReadFile(configFilePath)
-	if err != nil {
-		log.Println(err)
-		return 1
-	}
-
-	c := Config{}
-
-	err = yaml.Unmarshal(configDoc, &c)
+	c, err := ReadConfig(configFilePath)
 	if err != nil {
 		log.Println(err)
 		return 1
@@ -95,6 +87,22 @@ func GenerateManifest(config string, out string) int {
 	log.Println("manifest written")
 
 	return 0
+}
+
+func ReadConfig(path string) (*Config, error) {
+	configDoc, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	c := Config{}
+
+	err = yaml.Unmarshal(configDoc, &c)
+	if err != nil {
+		return nil, err
+	}
+
+	return &c, nil
 }
 
 func processGlobs(globs []string, configFileDir string, outputPath string) ([]Asset, error) {

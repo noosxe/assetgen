@@ -14,9 +14,9 @@ func main() {
 	}
 }
 
-const usage = `usage: assgen <command>
+const usage = `usage: assetgen <command>
 
-assgen - generate manifest files for your static assets
+assetgen - generate manifest files for your static assets
 
 commands:
 	generate	Generates a manifest file
@@ -39,13 +39,13 @@ func run(stdout, stderr io.Writer, args []string) (code int) {
 	return 64 // EX_USAGE
 }
 
-const usageGenerate = `usage: assgen generate [<args>...]
+const usageGenerate = `usage: assetgen generate [<args>...]
 
 Generates the manifest file
 
 Args:
 	-config
-		Config file path. (default ./assgen.yaml)
+		Config file path. (default ./assetgen.yaml)
 	-out
 		Specify the output directory. (default ./dist)
 `
@@ -54,7 +54,7 @@ func generate(args []string) (code int) {
 	cmd := flag.NewFlagSet("generate", flag.ExitOnError)
 
 	var config string
-	cmd.StringVar(&config, "config", "./assgen.yaml", "config file path")
+	cmd.StringVar(&config, "config", "./assetgen.yaml", "config file path")
 
 	var out string
 	cmd.StringVar(&out, "out", "./dist", "output directory")

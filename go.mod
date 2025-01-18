@@ -1,4 +1,4 @@
-module github.com/noosxe/assgen
+module github.com/noosxe/assetgen
 
 go 1.23.4
 

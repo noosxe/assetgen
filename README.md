@@ -1,1 +1,1 @@
-# assgen
+# assetgen

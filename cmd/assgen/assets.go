@@ -65,10 +65,20 @@ func GenerateManifest(config string, out string) int {
 
 	log.Println("processing scripts")
 	scriptAssets, err := processGlobs(scripts, configFileDir, outputPath)
+	if err != nil {
+		log.Println(err)
+		return 1
+	}
+
 	manifest.Scripts = scriptAssets
 
 	log.Println("processing styles")
 	styleAssets, err := processGlobs(styles, configFileDir, outputPath)
+	if err != nil {
+		log.Println(err)
+		return 1
+	}
+
 	manifest.Styles = styleAssets
 
 	manifestContent, err := json.Marshal(manifest)

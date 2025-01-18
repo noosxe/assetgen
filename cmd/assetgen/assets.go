@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"gopkg.in/yaml.v3"
 )
 
@@ -120,20 +121,25 @@ func processGlobs(globs []string, configFileDir string, outputPath string) ([]As
 
 	for _, script := range globs {
 		fullpath := filepath.Join(configFileDir, script)
-		matches, err := filepath.Glob(fullpath)
+		basepath, pattern := doublestar.SplitPattern(fullpath)
+
+		fsys := os.DirFS(basepath)
+		matches, err := doublestar.Glob(fsys, pattern)
+
 		if err != nil {
 			return nil, err
 		}
 
 		for _, match := range matches {
-			rel, err := filepath.Rel(configFileDir, match)
+			glued := filepath.Join(basepath, match)
+			rel, err := filepath.Rel(configFileDir, glued)
 			if err != nil {
 				return nil, err
 			}
 
 			destPath := filepath.Join(outputPath, rel)
 			log.Printf("copying %s\n", rel)
-			hash, err := copyFile(match, destPath)
+			hash, err := copyFile(glued, destPath)
 			if err != nil {
 				return nil, err
 			}
@@ -151,6 +157,12 @@ func copyFile(from string, to string) (string, error) {
 		return "", err
 	}
 	defer src.Close()
+
+	destDir := filepath.Dir(to)
+	err = os.MkdirAll(destDir, 0755)
+	if err != nil {
+		return "", err
+	}
 
 	dst, err := os.Create(to)
 	if err != nil {

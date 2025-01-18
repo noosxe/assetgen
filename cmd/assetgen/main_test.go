@@ -19,10 +19,15 @@ func TestGenerateManifest(t *testing.T) {
 		t.Fatal("dist directory not created")
 	}
 
+	if !exists("../../test/dist/subdir") {
+		t.Fatal("dist/subdir directory not created")
+	}
+
 	testFiles := []string{
 		"../../test/dist/test.js",
 		"../../test/dist/other.js",
 		"../../test/dist/test.css",
+		"../../test/dist/subdir/inner.js",
 	}
 
 	for _, f := range testFiles {

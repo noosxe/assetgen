@@ -28,6 +28,7 @@ func TestGenerateManifest(t *testing.T) {
 		"../../test/dist/other.js",
 		"../../test/dist/test.css",
 		"../../test/dist/subdir/inner.js",
+		"../../test/dist/random.txt",
 	}
 
 	for _, f := range testFiles {

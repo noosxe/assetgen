@@ -16,6 +16,7 @@ import (
 type Config struct {
 	Styles  []string `yaml:"styles"`
 	Scripts []string `yaml:"scripts"`
+	Random  []string `yaml:"random"`
 	Out     *string  `yaml:"out"`
 }
 
@@ -27,6 +28,7 @@ type Asset struct {
 type Manifest struct {
 	Styles  []Asset `json:"styles"`
 	Scripts []Asset `json:"scripts"`
+	Random  []Asset `json:"random"`
 }
 
 func GenerateManifest(config string, out string) int {
@@ -61,6 +63,7 @@ func GenerateManifest(config string, out string) int {
 
 	scripts := c.Scripts
 	styles := c.Styles
+	random := c.Random
 
 	manifest := Manifest{}
 
@@ -81,6 +84,15 @@ func GenerateManifest(config string, out string) int {
 	}
 
 	manifest.Styles = styleAssets
+
+	log.Println("processing random assets")
+	randomAssets, err := processGlobs(random, configFileDir, outputPath)
+	if err != nil {
+		log.Println(err)
+		return 1
+	}
+
+	manifest.Random = randomAssets
 
 	manifestContent, err := json.Marshal(manifest)
 	if err != nil {

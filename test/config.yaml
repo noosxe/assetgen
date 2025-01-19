@@ -4,4 +4,7 @@ styles:
 scripts:
   - ./**/*.js
 
+random:
+  - ./**/*.txt
+
 out: ./dist

@@ -13,6 +13,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type AppContext struct {
+	configPath string
+	configDir  string
+	outPath    string
+}
+
 type Config struct {
 	Styles  []string `yaml:"styles"`
 	Scripts []string `yaml:"scripts"`
@@ -31,34 +37,40 @@ type Manifest struct {
 	Random  []Asset `json:"random"`
 }
 
-func GenerateManifest(config string, out string) int {
-	configFilePath, err := filepath.Abs(config)
+func GenerateManifest(appCtx AppContext) int {
+	c, err := ReadConfig(appCtx.configPath)
 	if err != nil {
 		log.Println(err)
 		return 1
 	}
 
-	configFileDir := filepath.Dir(configFilePath)
-	outputPath := filepath.Join(configFileDir, out)
+	if appCtx.outPath == "" {
+		if c.Out == nil {
+			log.Println("no output path specified")
+			return 1
+		}
 
+		out := *c.Out
+		if filepath.IsAbs(out) {
+			appCtx.outPath = out
+		} else {
+			appCtx.outPath = filepath.Join(appCtx.configDir, out)
+		}
+	}
+
+	log.Printf("output path is %s", appCtx.outPath)
 	log.Println("ensuring output path")
-	_, err = os.Stat(outputPath)
+	_, err = os.Stat(appCtx.outPath)
 	if os.IsNotExist(err) {
 		log.Println("output path does not exist, creating...")
-		err := os.Mkdir(outputPath, 0755)
+		err := os.Mkdir(appCtx.outPath, 0755)
 		if err != nil {
-			log.Println(err)
+			log.Println(err, appCtx.outPath)
 			return 1
 		}
 		log.Println("output path created")
 	} else {
 		log.Println("output path exists")
-	}
-
-	c, err := ReadConfig(configFilePath)
-	if err != nil {
-		log.Println(err)
-		return 1
 	}
 
 	scripts := c.Scripts
@@ -68,7 +80,7 @@ func GenerateManifest(config string, out string) int {
 	manifest := Manifest{}
 
 	log.Println("processing scripts")
-	scriptAssets, err := processGlobs(scripts, configFileDir, outputPath)
+	scriptAssets, err := processGlobs(scripts, appCtx.configDir, appCtx.outPath)
 	if err != nil {
 		log.Println(err)
 		return 1
@@ -77,7 +89,7 @@ func GenerateManifest(config string, out string) int {
 	manifest.Scripts = scriptAssets
 
 	log.Println("processing styles")
-	styleAssets, err := processGlobs(styles, configFileDir, outputPath)
+	styleAssets, err := processGlobs(styles, appCtx.configDir, appCtx.outPath)
 	if err != nil {
 		log.Println(err)
 		return 1
@@ -86,7 +98,7 @@ func GenerateManifest(config string, out string) int {
 	manifest.Styles = styleAssets
 
 	log.Println("processing random assets")
-	randomAssets, err := processGlobs(random, configFileDir, outputPath)
+	randomAssets, err := processGlobs(random, appCtx.configDir, appCtx.outPath)
 	if err != nil {
 		log.Println(err)
 		return 1
@@ -100,7 +112,7 @@ func GenerateManifest(config string, out string) int {
 		return 1
 	}
 
-	manifestPath := filepath.Join(outputPath, "manifest.json")
+	manifestPath := filepath.Join(appCtx.outPath, "manifest.json")
 	err = writeManifest(manifestPath, manifestContent)
 	if err != nil {
 		log.Println(err)

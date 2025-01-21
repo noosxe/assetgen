@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -26,7 +27,7 @@ commands:
 func run(stdout, stderr io.Writer, args []string) (code int) {
 	if len(args) < 2 {
 		fmt.Fprint(stderr, usage)
-		return 64 // EX_USAGE
+		return 64
 	}
 	switch args[1] {
 	case "generate":
@@ -36,7 +37,7 @@ func run(stdout, stderr io.Writer, args []string) (code int) {
 		return 0
 	}
 	fmt.Fprint(stderr, usage)
-	return 64 // EX_USAGE
+	return 64
 }
 
 const usageGenerate = `usage: assetgen generate [<args>...]
@@ -47,17 +48,14 @@ Args:
 	-config
 		Config file path. (default ./assetgen.yaml)
 	-out
-		Specify the output directory. (default ./dist)
+		Specify the output directory.
 `
 
 func generate(args []string) (code int) {
 	cmd := flag.NewFlagSet("generate", flag.ExitOnError)
 
-	var config string
-	cmd.StringVar(&config, "config", "./assetgen.yaml", "config file path")
-
-	var out string
-	cmd.StringVar(&out, "out", "./dist", "output directory")
+	configFlag := cmd.String("config", "./assetgen.yaml", "config file path")
+	outFlag := cmd.String("out", "", "output directory")
 
 	cmd.Usage = func() { fmt.Print(usageGenerate) }
 	err := cmd.Parse(args)
@@ -65,6 +63,32 @@ func generate(args []string) (code int) {
 		cmd.PrintDefaults()
 		return 64
 	}
+	ctx := AppContext{configPath: *configFlag, outPath: *outFlag}
+	err = normalizeContext(&ctx)
+	if err != nil {
+		return 1
+	}
 
-	return GenerateManifest(config, out)
+	return GenerateManifest(ctx)
+}
+
+func normalizeContext(ctx *AppContext) error {
+	configPath, err := filepath.Abs(ctx.configPath)
+	if err != nil {
+		return err
+	}
+	ctx.configPath = configPath
+	ctx.configDir = filepath.Dir(ctx.configPath)
+
+	if ctx.outPath != "" {
+		if !filepath.IsAbs(ctx.outPath) {
+			wd, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			ctx.outPath = filepath.Join(wd, ctx.outPath)
+		}
+	}
+
+	return nil
 }

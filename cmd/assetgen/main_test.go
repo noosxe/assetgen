@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -10,7 +11,10 @@ func TestGenerateManifest(t *testing.T) {
 		os.RemoveAll("../../test/dist")
 	}
 
-	ret := GenerateManifest("../../test/config.yaml", "./dist")
+	configPath := "../../test/config.yaml"
+	configPath, _ = filepath.Abs(configPath)
+	appCtx := AppContext{configPath: configPath, configDir: filepath.Dir(configPath), outPath: ""}
+	ret := GenerateManifest(appCtx)
 	if ret != 0 {
 		t.Fatalf("GenerateManifest returned %d", ret)
 	}

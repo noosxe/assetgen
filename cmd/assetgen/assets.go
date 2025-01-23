@@ -114,14 +114,18 @@ func GenerateManifest(appCtx AppContext) int {
 		return 1
 	}
 
-	manifestPath := filepath.Join(appCtx.outPath, "manifest.json")
-	err = writeManifest(manifestPath, manifestContent)
-	if err != nil {
-		log.Println(err)
-		return 1
-	}
+	if !appCtx.noManifest {
+		manifestPath := filepath.Join(appCtx.outPath, "manifest.json")
+		err = writeManifest(manifestPath, manifestContent)
+		if err != nil {
+			log.Println(err)
+			return 1
+		}
 
-	log.Println("manifest written")
+		log.Println("manifest written")
+	} else {
+		log.Println("manifest skipped")
+	}
 
 	return 0
 }

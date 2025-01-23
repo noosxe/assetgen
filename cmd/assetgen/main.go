@@ -49,6 +49,10 @@ Args:
 		Config file path. (default ./assetgen.yaml)
 	-out
 		Specify the output directory.
+	-no-copy
+		Do not copy any assets. (default false)
+	-no-manifest
+		Do not generate a manifest file. (default false)
 `
 
 func generate(args []string) (code int) {
@@ -56,6 +60,8 @@ func generate(args []string) (code int) {
 
 	configFlag := cmd.String("config", "./assetgen.yaml", "config file path")
 	outFlag := cmd.String("out", "", "output directory")
+	noCopyFlag := cmd.Bool("no-copy", false, "prevent asset copying")
+	noManifestFlag := cmd.Bool("no-manifest", false, "prevent manifest creation")
 
 	cmd.Usage = func() { fmt.Print(usageGenerate) }
 	err := cmd.Parse(args)
@@ -63,7 +69,12 @@ func generate(args []string) (code int) {
 		cmd.PrintDefaults()
 		return 64
 	}
-	ctx := AppContext{configPath: *configFlag, outPath: *outFlag}
+	ctx := AppContext{
+		configPath: *configFlag,
+		outPath:    *outFlag,
+		noCopy:     *noCopyFlag,
+		noManifest: *noManifestFlag,
+	}
 	err = normalizeContext(&ctx)
 	if err != nil {
 		return 1

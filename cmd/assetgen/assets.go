@@ -17,6 +17,8 @@ type AppContext struct {
 	configPath string
 	configDir  string
 	outPath    string
+	noCopy     bool
+	noManifest bool
 }
 
 type Config struct {
@@ -80,7 +82,7 @@ func GenerateManifest(appCtx AppContext) int {
 	manifest := Manifest{}
 
 	log.Println("processing scripts")
-	scriptAssets, err := processGlobs(scripts, appCtx.configDir, appCtx.outPath)
+	scriptAssets, err := processGlobs(appCtx, scripts, appCtx.configDir, appCtx.outPath)
 	if err != nil {
 		log.Println(err)
 		return 1
@@ -89,7 +91,7 @@ func GenerateManifest(appCtx AppContext) int {
 	manifest.Scripts = scriptAssets
 
 	log.Println("processing styles")
-	styleAssets, err := processGlobs(styles, appCtx.configDir, appCtx.outPath)
+	styleAssets, err := processGlobs(appCtx, styles, appCtx.configDir, appCtx.outPath)
 	if err != nil {
 		log.Println(err)
 		return 1
@@ -98,7 +100,7 @@ func GenerateManifest(appCtx AppContext) int {
 	manifest.Styles = styleAssets
 
 	log.Println("processing random assets")
-	randomAssets, err := processGlobs(random, appCtx.configDir, appCtx.outPath)
+	randomAssets, err := processGlobs(appCtx, random, appCtx.configDir, appCtx.outPath)
 	if err != nil {
 		log.Println(err)
 		return 1
@@ -140,7 +142,7 @@ func ReadConfig(path string) (*Config, error) {
 	return &c, nil
 }
 
-func processGlobs(globs []string, configFileDir string, outputPath string) ([]Asset, error) {
+func processGlobs(appCtx AppContext, globs []string, configFileDir string, outputPath string) ([]Asset, error) {
 	results := make([]Asset, 0)
 
 	for _, script := range globs {
@@ -163,7 +165,7 @@ func processGlobs(globs []string, configFileDir string, outputPath string) ([]As
 
 			destPath := filepath.Join(outputPath, rel)
 			log.Printf("copying %s\n", rel)
-			hash, err := copyFile(glued, destPath)
+			hash, err := copyFile(appCtx, glued, destPath)
 			if err != nil {
 				return nil, err
 			}
@@ -175,20 +177,22 @@ func processGlobs(globs []string, configFileDir string, outputPath string) ([]As
 	return results, nil
 }
 
-func copyFile(from string, to string) (string, error) {
+func copyFile(appCtx AppContext, from string, to string) (string, error) {
 	src, err := os.Open(from)
 	if err != nil {
 		return "", err
 	}
 	defer src.Close()
 
-	destDir := filepath.Dir(to)
-	err = os.MkdirAll(destDir, 0755)
-	if err != nil {
-		return "", err
+	if !appCtx.noCopy {
+		destDir := filepath.Dir(to)
+		err = os.MkdirAll(destDir, 0755)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	dst, err := os.Create(to)
+	dst, err := getCopyDestination(appCtx, to)
 	if err != nil {
 		return "", err
 	}
@@ -205,6 +209,14 @@ func copyFile(from string, to string) (string, error) {
 	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
 }
 
+func getCopyDestination(appCtx AppContext, to string) (io.WriteCloser, error) {
+	if appCtx.noCopy {
+		return NopWriteCloser{}, nil
+	}
+
+	return os.Create(to)
+}
+
 func writeManifest(path string, content []byte) error {
 	dst, err := os.Create(path)
 	if err != nil {
@@ -214,4 +226,14 @@ func writeManifest(path string, content []byte) error {
 
 	_, err = dst.Write(content)
 	return err
+}
+
+type NopWriteCloser struct{}
+
+func (NopWriteCloser) Write(p []byte) (int, error) {
+	return len(p), nil
+}
+
+func (NopWriteCloser) Close() error {
+	return nil
 }

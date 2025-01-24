@@ -21,16 +21,22 @@ type AppContext struct {
 	noManifest bool
 }
 
+type Descriptor struct {
+	Glob    string `yaml:"glob"`
+	Preload bool   `yaml:"preload"`
+}
+
 type Config struct {
-	Styles  []string `yaml:"styles"`
-	Scripts []string `yaml:"scripts"`
-	Random  []string `yaml:"random"`
-	Out     *string  `yaml:"out"`
+	Styles  []Descriptor `yaml:"styles"`
+	Scripts []Descriptor `yaml:"scripts"`
+	Random  []Descriptor `yaml:"random"`
+	Out     *string      `yaml:"out"`
 }
 
 type Asset struct {
-	Path string `json:"path"`
-	Hash string `json:"hash"`
+	Path    string `json:"path"`
+	Hash    string `json:"hash"`
+	Preload bool   `json:"preload"`
 }
 
 type Manifest struct {
@@ -146,11 +152,11 @@ func ReadConfig(path string) (*Config, error) {
 	return &c, nil
 }
 
-func processGlobs(appCtx AppContext, globs []string, configFileDir string, outputPath string) ([]Asset, error) {
+func processGlobs(appCtx AppContext, globs []Descriptor, configFileDir string, outputPath string) ([]Asset, error) {
 	results := make([]Asset, 0)
 
 	for _, script := range globs {
-		fullpath := filepath.Join(configFileDir, script)
+		fullpath := filepath.Join(configFileDir, script.Glob)
 		basepath, pattern := doublestar.SplitPattern(fullpath)
 
 		fsys := os.DirFS(basepath)
@@ -174,7 +180,7 @@ func processGlobs(appCtx AppContext, globs []string, configFileDir string, outpu
 				return nil, err
 			}
 
-			results = append(results, Asset{Path: rel, Hash: hash})
+			results = append(results, Asset{Path: rel, Hash: hash, Preload: script.Preload})
 		}
 	}
 

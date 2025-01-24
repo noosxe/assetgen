@@ -1,10 +1,10 @@
 styles:
-  - ./*.css
+  - glob: ./*.css
 
 scripts:
-  - ./**/*.js
+  - glob: ./**/*.js
 
 random:
-  - ./**/*.txt
+  - glob: ./**/*.txt
 
 out: ./dist

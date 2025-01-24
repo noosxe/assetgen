@@ -39,6 +39,7 @@ func TestGenerateManifest(t *testing.T) {
 			t.Fatalf("test file not created: %s", f)
 		}
 	}
+
 	cleanup()
 }
 

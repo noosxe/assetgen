@@ -6,5 +6,7 @@ scripts:
 
 random:
   - glob: ./**/*.txt
+    id: text
+    preload: true
 
 out: ./dist

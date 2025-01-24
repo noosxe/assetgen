@@ -22,8 +22,9 @@ type AppContext struct {
 }
 
 type Descriptor struct {
-	Glob    string `yaml:"glob"`
-	Preload bool   `yaml:"preload"`
+	Id      *string `yaml:"id"`
+	Glob    string  `yaml:"glob"`
+	Preload bool    `yaml:"preload"`
 }
 
 type Config struct {
@@ -34,9 +35,10 @@ type Config struct {
 }
 
 type Asset struct {
-	Path    string `json:"path"`
-	Hash    string `json:"hash"`
-	Preload bool   `json:"preload"`
+	Id      *string `json:"id,omitempty"`
+	Path    string  `json:"path"`
+	Hash    string  `json:"hash"`
+	Preload bool    `json:"preload,omitempty"`
 }
 
 type Manifest struct {
@@ -180,7 +182,12 @@ func processGlobs(appCtx AppContext, globs []Descriptor, configFileDir string, o
 				return nil, err
 			}
 
-			results = append(results, Asset{Path: rel, Hash: hash, Preload: script.Preload})
+			asset := Asset{Path: rel, Hash: hash, Preload: script.Preload}
+			if script.Id != nil {
+				asset.Id = script.Id
+			}
+
+			results = append(results, asset)
 		}
 	}
 

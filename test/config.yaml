@@ -1,10 +1,6 @@
-styles:
+assets:
   - glob: ./*.css
-
-scripts:
   - glob: ./**/*.js
-
-random:
   - glob: ./**/*.txt
     id: text
     preload: true

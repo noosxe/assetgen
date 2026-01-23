@@ -10,7 +10,8 @@ import (
 	"path/filepath"
 
 	"github.com/bmatcuk/doublestar/v4"
-	"gopkg.in/yaml.v3"
+
+	"github.com/noosxe/assetgen/internal"
 )
 
 type AppContext struct {
@@ -27,13 +28,6 @@ type Descriptor struct {
 	Preload bool    `yaml:"preload"`
 }
 
-type Config struct {
-	Styles  []Descriptor `yaml:"styles"`
-	Scripts []Descriptor `yaml:"scripts"`
-	Random  []Descriptor `yaml:"random"`
-	Out     *string      `yaml:"out"`
-}
-
 type Asset struct {
 	Id      *string `json:"id,omitempty"`
 	Path    string  `json:"path"`
@@ -48,7 +42,7 @@ type Manifest struct {
 }
 
 func GenerateManifest(appCtx AppContext) int {
-	c, err := ReadConfig(appCtx.configPath)
+	c, err := internal.ReadConfig(appCtx.configPath)
 	if err != nil {
 		log.Println(err)
 		return 1
@@ -83,39 +77,9 @@ func GenerateManifest(appCtx AppContext) int {
 		log.Println("output path exists")
 	}
 
-	scripts := c.Scripts
-	styles := c.Styles
-	random := c.Random
+	_, err = processGlobs(appCtx, c.Assets, appCtx.configDir, appCtx.outPath)
 
 	manifest := Manifest{}
-
-	log.Println("processing scripts")
-	scriptAssets, err := processGlobs(appCtx, scripts, appCtx.configDir, appCtx.outPath)
-	if err != nil {
-		log.Println(err)
-		return 1
-	}
-
-	manifest.Scripts = scriptAssets
-
-	log.Println("processing styles")
-	styleAssets, err := processGlobs(appCtx, styles, appCtx.configDir, appCtx.outPath)
-	if err != nil {
-		log.Println(err)
-		return 1
-	}
-
-	manifest.Styles = styleAssets
-
-	log.Println("processing random assets")
-	randomAssets, err := processGlobs(appCtx, random, appCtx.configDir, appCtx.outPath)
-	if err != nil {
-		log.Println(err)
-		return 1
-	}
-
-	manifest.Random = randomAssets
-
 	manifestContent, err := json.Marshal(manifest)
 	if err != nil {
 		log.Println(err)
@@ -138,23 +102,7 @@ func GenerateManifest(appCtx AppContext) int {
 	return 0
 }
 
-func ReadConfig(path string) (*Config, error) {
-	configDoc, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	c := Config{}
-
-	err = yaml.Unmarshal(configDoc, &c)
-	if err != nil {
-		return nil, err
-	}
-
-	return &c, nil
-}
-
-func processGlobs(appCtx AppContext, globs []Descriptor, configFileDir string, outputPath string) ([]Asset, error) {
+func processGlobs(appCtx AppContext, globs []internal.Input, configFileDir string, outputPath string) ([]Asset, error) {
 	results := make([]Asset, 0)
 
 	for _, script := range globs {

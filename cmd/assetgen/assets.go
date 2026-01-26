@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 
@@ -102,11 +104,11 @@ func GenerateManifest(appCtx AppContext) int {
 	return 0
 }
 
-func processGlobs(appCtx AppContext, globs []internal.Input, configFileDir string, outputPath string) ([]Asset, error) {
-	results := make([]Asset, 0)
+func processGlobs(appCtx AppContext, globs []internal.Input, configFileDir string, outputPath string) ([]internal.Asset, error) {
+	results := make([]internal.Asset, 0)
 
-	for _, script := range globs {
-		fullpath := filepath.Join(configFileDir, script.Glob)
+	for _, input := range globs {
+		fullpath := filepath.Join(configFileDir, input.Glob)
 		basepath, pattern := doublestar.SplitPattern(fullpath)
 
 		fsys := os.DirFS(basepath)
@@ -117,22 +119,18 @@ func processGlobs(appCtx AppContext, globs []internal.Input, configFileDir strin
 		}
 
 		for _, match := range matches {
-			glued := filepath.Join(basepath, match)
-			rel, err := filepath.Rel(configFileDir, glued)
+			inPath := filepath.Join(basepath, match)
+			rel, err := filepath.Rel(configFileDir, inPath)
 			if err != nil {
 				return nil, err
 			}
 
-			destPath := filepath.Join(outputPath, rel)
+			outPath := noExt(filepath.Join(outputPath, rel))
 			log.Printf("copying %s\n", rel)
-			hash, err := copyFile(appCtx, glued, destPath)
+			asset := internal.Asset{Id: input.Id, Path: rel, Preload: input.Preload}
+			err = pipeline(&asset, input, inPath, outPath)
 			if err != nil {
 				return nil, err
-			}
-
-			asset := Asset{Path: rel, Hash: hash, Preload: script.Preload}
-			if script.Id != nil {
-				asset.Id = script.Id
 			}
 
 			results = append(results, asset)
@@ -140,6 +138,34 @@ func processGlobs(appCtx AppContext, globs []internal.Input, configFileDir strin
 	}
 
 	return results, nil
+}
+
+func pipeline(asset *internal.Asset, input internal.Input, inPath string, outPath string) error {
+	fileReader, err := internal.NewFileReader(inPath)
+	if err != nil {
+		return err
+	}
+
+	lastReader := fileReader.Reader()
+
+	if input.Minify {
+		mediaType := mime.TypeByExtension(fileReader.Type())
+		minifier := internal.NewMinifier(lastReader, mediaType)
+		lastReader = minifier.Reader()
+		asset.MediaType = mediaType
+	}
+
+	hasher := internal.NewHasher(lastReader)
+
+	writer, err := internal.NewFileWriter(hasher.Reader(), outPath, fileReader.Type())
+	if err != nil {
+		return err
+	}
+
+	err = writer.Run()
+	hasher.After(asset)
+
+	return nil
 }
 
 func copyFile(appCtx AppContext, from string, to string) (string, error) {
@@ -201,4 +227,8 @@ func (NopWriteCloser) Write(p []byte) (int, error) {
 
 func (NopWriteCloser) Close() error {
 	return nil
+}
+
+func noExt(path string) string {
+	return strings.TrimSuffix(path, filepath.Ext(path))
 }

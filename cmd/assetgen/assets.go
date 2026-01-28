@@ -1,10 +1,7 @@
 package main
 
 import (
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
-	"io"
 	"log"
 	"mime"
 	"os"
@@ -79,7 +76,7 @@ func GenerateManifest(appCtx AppContext) int {
 		log.Println("output path exists")
 	}
 
-	_, err = processGlobs(appCtx, c.Assets, appCtx.configDir, appCtx.outPath)
+	_, err = processGlobs(c.Assets, appCtx.configDir, appCtx.outPath, appCtx)
 
 	manifest := Manifest{}
 	manifestContent, err := json.Marshal(manifest)
@@ -104,7 +101,7 @@ func GenerateManifest(appCtx AppContext) int {
 	return 0
 }
 
-func processGlobs(appCtx AppContext, globs []internal.Input, configFileDir string, outputPath string) ([]internal.Asset, error) {
+func processGlobs(globs []internal.Input, configFileDir string, outputPath string, appCtx AppContext) ([]internal.Asset, error) {
 	results := make([]internal.Asset, 0)
 
 	for _, input := range globs {
@@ -128,7 +125,7 @@ func processGlobs(appCtx AppContext, globs []internal.Input, configFileDir strin
 			outPath := noExt(filepath.Join(outputPath, rel))
 			log.Printf("copying %s\n", rel)
 			asset := internal.Asset{Id: input.Id, Path: rel, Preload: input.Preload}
-			err = pipeline(&asset, input, inPath, outPath)
+			err = pipeline(&asset, input, inPath, outPath, appCtx)
 			if err != nil {
 				return nil, err
 			}
@@ -140,7 +137,7 @@ func processGlobs(appCtx AppContext, globs []internal.Input, configFileDir strin
 	return results, nil
 }
 
-func pipeline(asset *internal.Asset, input internal.Input, inPath string, outPath string) error {
+func pipeline(asset *internal.Asset, input internal.Input, inPath string, outPath string, appCtx AppContext) error {
 	fileReader, err := internal.NewFileReader(inPath)
 	if err != nil {
 		return err
@@ -162,50 +159,10 @@ func pipeline(asset *internal.Asset, input internal.Input, inPath string, outPat
 		return err
 	}
 
-	err = writer.Run()
+	err = writer.Run(appCtx.noCopy)
 	hasher.After(asset)
 
 	return nil
-}
-
-func copyFile(appCtx AppContext, from string, to string) (string, error) {
-	src, err := os.Open(from)
-	if err != nil {
-		return "", err
-	}
-	defer src.Close()
-
-	if !appCtx.noCopy {
-		destDir := filepath.Dir(to)
-		err = os.MkdirAll(destDir, 0755)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	dst, err := getCopyDestination(appCtx, to)
-	if err != nil {
-		return "", err
-	}
-	defer dst.Close()
-
-	hasher := sha256.New()
-	data := io.TeeReader(src, hasher)
-
-	_, err = io.Copy(dst, data)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
-}
-
-func getCopyDestination(appCtx AppContext, to string) (io.WriteCloser, error) {
-	if appCtx.noCopy {
-		return NopWriteCloser{}, nil
-	}
-
-	return os.Create(to)
 }
 
 func writeManifest(path string, content []byte) error {
@@ -217,16 +174,6 @@ func writeManifest(path string, content []byte) error {
 
 	_, err = dst.Write(content)
 	return err
-}
-
-type NopWriteCloser struct{}
-
-func (NopWriteCloser) Write(p []byte) (int, error) {
-	return len(p), nil
-}
-
-func (NopWriteCloser) Close() error {
-	return nil
 }
 
 func noExt(path string) string {

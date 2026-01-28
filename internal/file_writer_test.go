@@ -7,21 +7,27 @@ import (
 )
 
 func TestFileWriter(t *testing.T) {
+	os.RemoveAll("../test/dist")
+
 	reader := bytes.NewReader([]byte("hello, world!"))
 	_, err := NewFileWriter(reader, "../test/dist/test", ".txt")
 	if err != nil {
 		t.Fatalf("error creating file writer: %v", err)
 	}
+
+	os.RemoveAll("../test/dist")
 }
 
 func TestFileWriter_Run(t *testing.T) {
+	os.RemoveAll("../test/dist")
+
 	reader := bytes.NewReader([]byte("hello, world!"))
 	fileWriter, err := NewFileWriter(reader, "../test/dist/test", ".txt")
 	if err != nil {
 		t.Fatalf("error creating file writer: %v", err)
 	}
 
-	err = fileWriter.Run()
+	err = fileWriter.Run(false)
 	if err != nil {
 		t.Fatalf("error running the FileWriter: %v", err)
 	}
@@ -41,6 +47,31 @@ func TestFileWriter_Run(t *testing.T) {
 
 	if "hello, world!" != string(content) {
 		t.Fatalf("output content incorrect: '%s', expected: 'hello, world!'", content)
+	}
+
+	os.RemoveAll("../test/dist")
+}
+
+func TestFileWriter_Noop(t *testing.T) {
+	os.RemoveAll("../test/dist")
+
+	reader := bytes.NewReader([]byte("hello, world!"))
+	fileWriter, err := NewFileWriter(reader, "../test/dist/test", ".txt")
+	if err != nil {
+		t.Fatalf("error creating file writer: %v", err)
+	}
+
+	err = fileWriter.Run(true)
+	if err != nil {
+		t.Fatalf("error running the FileWriter: %v", err)
+	}
+
+	if exists("../test/dist") {
+		t.Fatalf("output dir was created")
+	}
+
+	if exists("../test/dist/test.txt") {
+		t.Fatalf("output file was created")
 	}
 
 	os.RemoveAll("../test/dist")
